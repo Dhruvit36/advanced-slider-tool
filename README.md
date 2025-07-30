@@ -71,7 +71,7 @@ A powerful, modern web-based presentation and animation editor built with React,
 - **Font Awesome 7.0.0** - Professional icon library
 
 ### State Management
-- **Zustand 5.0.6** - Lightweight state management
+- **React Context + useReducer** - Built-in React state management
 - **Immer 10.1.1** - Immutable state updates
 
 ## 🚀 Quick Start
@@ -291,7 +291,6 @@ This project is proprietary software licensed under a Commercial License Agreeme
 - **Tailwind CSS** - For the utility-first CSS framework
 - **Font Awesome** - For the comprehensive icon library
 - **Vite Team** - For the fast build tool
-- **Zustand** - For lightweight state management
 
 ## 📞 Support & Licensing
 
