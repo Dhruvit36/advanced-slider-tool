@@ -4,8 +4,6 @@ import { CleanDropdown } from './ui/CleanDropdown';
 
 export function Timeline() {
   const { state, dispatch } = useSlider();
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [timelineHeight, setTimelineHeight] = useState(128); // Default height in pixels
   const [timelineScale, setTimelineScale] = useState('100%');
@@ -14,8 +12,11 @@ export function Timeline() {
   const playheadRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
 
+  // Use global state instead of local state
+  const isPlaying = state.isPlaying;
+  const currentTime = state.currentTime;
   const currentSlide = state.project?.slides[state.currentSlideIndex];
-  const maxTime = currentSlide?.duration || 5000;
+  const maxTime = currentSlide?.duration || 15000;
 
   useEffect(() => {
     if (isPlaying) {
@@ -25,12 +26,12 @@ export function Timeline() {
         const elapsed = Date.now() - startTime;
         
         if (elapsed >= maxTime) {
-          setCurrentTime(maxTime);
-          setIsPlaying(false);
+          dispatch({ type: 'SET_CURRENT_TIME', payload: maxTime });
+          dispatch({ type: 'SET_PLAYING', payload: false });
           return;
         }
         
-        setCurrentTime(elapsed);
+        dispatch({ type: 'SET_CURRENT_TIME', payload: elapsed });
         animationRef.current = requestAnimationFrame(animate);
       };
       
@@ -49,13 +50,19 @@ export function Timeline() {
   }, [isPlaying, maxTime]);
 
   const togglePlayback = () => {
-    setIsPlaying(!isPlaying);
-    dispatch({ type: 'SET_PLAYING', payload: !isPlaying });
+    if (!isPlaying) {
+      // If we're at the end (or very close to it), restart from beginning
+      if (currentTime >= maxTime - 100) { // 100ms buffer
+        dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
+      }
+      dispatch({ type: 'SET_PLAYING', payload: true });
+    } else {
+      dispatch({ type: 'SET_PLAYING', payload: false });
+    }
   };
 
   const resetTimeline = () => {
-    setCurrentTime(0);
-    setIsPlaying(false);
+    dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
     dispatch({ type: 'SET_PLAYING', payload: false });
   };
 
@@ -67,14 +74,13 @@ export function Timeline() {
     const width = rect.width;
     const newTime = (x / width) * maxTime;
     
-    setCurrentTime(Math.max(0, Math.min(newTime, maxTime)));
+    dispatch({ type: 'SET_CURRENT_TIME', payload: Math.max(0, Math.min(newTime, maxTime)) });
   };
 
   const handlePlayheadMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
-    setIsPlaying(false);
     dispatch({ type: 'SET_PLAYING', payload: false });
   };
 
@@ -86,7 +92,7 @@ export function Timeline() {
     const width = rect.width;
     const newTime = (x / width) * maxTime;
     
-    setCurrentTime(Math.max(0, Math.min(newTime, maxTime)));
+    dispatch({ type: 'SET_CURRENT_TIME', payload: Math.max(0, Math.min(newTime, maxTime)) });
   };
 
   const handleMouseUp = () => {
@@ -281,7 +287,7 @@ export function Timeline() {
       <div className="flex-1 relative">
         <div
           ref={timelineRef}
-          className="h-full bg-gray-100 relative cursor-pointer border-b border-gray-200 select-none overflow-auto"
+          className="h-full bg-gray-100 relative cursor-pointer border-b border-gray-200 select-none overflow-hidden"
           onClick={handleTimelineClick}
           style={{
             backgroundImage: `repeating-linear-gradient(
@@ -296,18 +302,24 @@ export function Timeline() {
         >
           {/* Time Markers */}
           <div className="absolute top-0 left-0 right-0 h-6 bg-gray-200 border-b border-gray-300">
-            {Array.from({ length: Math.ceil(maxTime / 1000) + 1 }, (_, i) => (
-              <div
-                key={i}
-                className="absolute top-0 bottom-0 border-l border-gray-400"
-                style={{ left: `${(i * 1000 / maxTime) * 100}%` }}
-              >
-                <span className="absolute top-0.5 left-1 text-xs text-gray-600 font-mono flex items-center">
-                  <i className="fas fa-clock mr-1" style={{ fontSize: '8px' }}></i>
-                  {i}s
-                </span>
-              </div>
-            ))}
+            {Array.from({ length: Math.ceil(maxTime / 1000) + 1 }, (_, i) => {
+              // Calculate equal spacing: distribute markers evenly across 100% width
+              const totalMarkers = Math.ceil(maxTime / 1000); // 15 markers (0-14s)
+              const position = (i / totalMarkers) * 100; // Equal spacing from 0% to 100%
+              
+              return (
+                <div
+                  key={i}
+                  className="absolute top-0 bottom-0 border-l border-gray-400"
+                  style={{ left: `${position}%` }}
+                >
+                  <span className="absolute top-0.5 left-1 text-xs text-gray-600 font-mono flex items-center">
+                    <i className="fas fa-clock mr-1" style={{ fontSize: '8px' }}></i>
+                    {i}s
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           {/* Progress Bar */}

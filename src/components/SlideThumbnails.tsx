@@ -17,7 +17,7 @@ export function SlideThumbnails() {
           hsl(${Math.random() * 360}, 70%, 60%) 100%)`
       },
       layers: [],
-      duration: 5000
+      duration: 15000
     };
     
     dispatch({ type: 'ADD_SLIDE', payload: newSlide });

@@ -84,7 +84,7 @@ export const slideTemplates: Slide[] = [
         }
       }
     ],
-    duration: 6000
+    duration: 15000
   },
   {
     id: 'template-features',
@@ -191,7 +191,7 @@ export const slideTemplates: Slide[] = [
         }
       }
     ],
-    duration: 5000
+    duration: 15000
   },
   {
     id: 'template-cta',
@@ -302,7 +302,7 @@ export const slideTemplates: Slide[] = [
         }
       }
     ],
-    duration: 7000
+    duration: 15000
   }
 ];
 

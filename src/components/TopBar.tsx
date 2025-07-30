@@ -37,13 +37,13 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
     
     const newSlide = {
       id: Date.now().toString(),
-      name: `Slide ${state.project.slides.length + 1}`,
+      name: `Slide ${(state.project?.slides.length || 0) + 1}`,
       background: {
-        type: 'gradient' as const,
-        value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        type: 'color' as const,
+        value: '#ffffff'
       },
       layers: [],
-      duration: 5000
+      duration: 15000
     };
     
     dispatch({ type: 'ADD_SLIDE', payload: newSlide });
@@ -58,7 +58,18 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   };
 
   const togglePlayback = () => {
-    dispatch({ type: 'SET_PLAYING', payload: !state.isPlaying });
+    const currentSlide = state.project?.slides[state.currentSlideIndex];
+    const maxTime = currentSlide?.duration || 15000;
+    
+    if (!state.isPlaying) {
+      // If we're at the end (or very close to it), restart from beginning
+      if (state.currentTime >= maxTime - 100) { // 100ms buffer
+        dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
+      }
+      dispatch({ type: 'SET_PLAYING', payload: true });
+    } else {
+      dispatch({ type: 'SET_PLAYING', payload: false });
+    }
   };
 
   return (

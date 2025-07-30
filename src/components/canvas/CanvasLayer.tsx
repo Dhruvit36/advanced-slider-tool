@@ -24,19 +24,39 @@ export function CanvasLayer({
   getAnimationClassName,
   onMouseDown
 }: CanvasLayerProps) {
-  // Build animation class names
+  // Build animation class names and custom styles
   let animationClasses = '';
+  let customAnimationStyle: React.CSSProperties = {};
+  
   if (animationState?.isAnimating && animationState.currentAnimation) {
     const animationName = animationState.currentAnimation === 'entrance' 
       ? layer.animation.entrance 
       : layer.animation.exit;
     animationClasses = getAnimationClassName(animationName);
+    
+    // Override CSS animation properties with layer-specific values
+    customAnimationStyle = {
+      animationDuration: `${layer.animation.duration}ms`,
+      animationDelay: isPreviewMode ? `${layer.animation.delay}ms` : '0ms',
+      animationTimingFunction: layer.animation.easing,
+      animationFillMode: 'forwards'
+    };
   }
   
-  // In preview mode, hide layers initially and show them during their entrance animation
-  const shouldShow = !isPreviewMode || 
-                    (animationState?.isAnimating && animationState.currentAnimation === 'entrance') ||
-                    (animationState?.currentAnimation === null && isPreviewMode);
+  // In preview mode, handle layer visibility based on animation timing
+  let shouldShow = true;
+  if (isPreviewMode) {
+    if (animationState?.isAnimating && animationState.currentAnimation === 'entrance') {
+      // Currently animating entrance - show with animation
+      shouldShow = true;
+    } else if (animationState?.currentAnimation === null && animationState?.isAnimating === false) {
+      // Animation has finished or not started yet - show static
+      shouldShow = true;
+    } else {
+      // Before animation starts - hide
+      shouldShow = false;
+    }
+  }
   
   const layerStyle: React.CSSProperties = {
     position: 'absolute',
@@ -59,10 +79,7 @@ export function CanvasLayer({
     justifyContent: layer.type === 'button' ? 'center' : 'flex-start',
     border: isSelected && !isPreviewMode ? '2px solid #0077ff' : 'none',
     boxSizing: 'border-box',
-    animationDuration: `${layer.animation.duration}ms`,
-    animationDelay: isPreviewMode ? `${layer.animation.delay}ms` : '0ms',
-    animationFillMode: 'forwards',
-    animationTimingFunction: layer.animation.easing
+    ...customAnimationStyle
   };
 
   return (

@@ -47,10 +47,18 @@ export function Canvas() {
     animationStates,
     isPreviewMode,
     getAnimationClassName,
-    previewAllAnimations
+    previewAllAnimations,
+    syncWithTimeline
   } = useCanvasAnimations();
 
   const currentSlide = state.project?.slides[state.currentSlideIndex];
+
+  // Sync timeline with canvas animations
+  useEffect(() => {
+    if (currentSlide?.layers) {
+      syncWithTimeline(state.currentTime, currentSlide.layers, state.isPlaying);
+    }
+  }, [state.currentTime, state.isPlaying, currentSlide?.layers, syncWithTimeline]);
 
   // Set up keyboard shortcuts
   useCanvasKeyboardShortcuts({
@@ -148,18 +156,6 @@ export function Canvas() {
     }
   }, [dragging, alignmentGuides]);
 
-  // Listen for animation preview trigger from keyboard shortcut
-  useEffect(() => {
-    const handleAnimationPreview = () => {
-      if (!isPreviewMode && currentSlide) {
-        previewAllAnimations(currentSlide.layers);
-      }
-    };
-
-    document.addEventListener('triggerAnimationPreview', handleAnimationPreview);
-    return () => document.removeEventListener('triggerAnimationPreview', handleAnimationPreview);
-  }, [isPreviewMode, currentSlide, previewAllAnimations]);
-
   const renderLayer = (layer: Layer) => {
     const isSelected = state.selectedLayerId === layer.id;
     const animationState = animationStates[layer.id];
@@ -199,8 +195,14 @@ export function Canvas() {
         onToggleGuides={toggleGuides}
         onToggleSnapToGrid={toggleSnapToGrid}
         onSetGridSize={setGridSize}
-        onPreviewAnimations={() => currentSlide && previewAllAnimations(currentSlide.layers)}
-        isPreviewMode={isPreviewMode}
+        onPreviewAnimations={() => {
+          if (currentSlide) {
+            // Reset timeline and start playing
+            dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
+            dispatch({ type: 'SET_PLAYING', payload: true });
+          }
+        }}
+        isPreviewMode={state.isPlaying}
       />
 
       {/* Canvas Area */}
