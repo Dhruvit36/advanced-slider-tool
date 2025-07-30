@@ -127,7 +127,7 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
               onClick={() => setShowTemplates(true)}
               className="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded text-sm transition-all flex items-center"
             >
-              <i className="fas fa-templates mr-1"></i>
+              <i className="fas fa-th-large mr-1"></i>
               Templates
             </button>
           </div>
