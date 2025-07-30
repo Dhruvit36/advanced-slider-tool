@@ -1,6 +1,7 @@
 import React from 'react';
 import { Layer } from '../../types';
 import { ColorPicker } from '../ui/ColorPicker';
+import { TypographyEditor } from '../ui/TypographyEditor';
 
 interface PropertiesPanelProps {
   selectedLayer: Layer | undefined;
@@ -123,28 +124,10 @@ export function PropertiesPanel({ selectedLayer, onUpdateProperty }: PropertiesP
 
       {/* Typography (for text/button) */}
       {(selectedLayer.type === 'text' || selectedLayer.type === 'button') && (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-            <h4 className="text-sm font-semibold text-gray-700 flex items-center">
-              <i className="fas fa-font mr-2 text-gray-500"></i>
-              Typography
-            </h4>
-          </div>
-          <div className="p-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-2">Font Size</label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={selectedLayer.style.fontSize}
-                  onChange={(e) => onUpdateProperty('style.fontSize', parseInt(e.target.value))}
-                  className="w-full p-2.5 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                />
-                <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-gray-400">px</span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TypographyEditor 
+          layer={selectedLayer}
+          onUpdateProperty={onUpdateProperty}
+        />
       )}
 
       {/* Appearance */}
@@ -156,17 +139,6 @@ export function PropertiesPanel({ selectedLayer, onUpdateProperty }: PropertiesP
           </h4>
         </div>
         <div className="p-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center">
-              <i className="fas fa-palette mr-2 text-purple-600"></i>
-              Text Color
-            </label>
-            <ColorPicker
-              value={selectedLayer.style.color || '#000000'}
-              onChange={(color) => onUpdateProperty('style.color', color)}
-            />
-          </div>
-
           {selectedLayer.type === 'button' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center">
@@ -176,6 +148,20 @@ export function PropertiesPanel({ selectedLayer, onUpdateProperty }: PropertiesP
               <ColorPicker
                 value={selectedLayer.style.backgroundColor || '#3b82f6'}
                 onChange={(color) => onUpdateProperty('style.backgroundColor', color)}
+              />
+            </div>
+          )}
+
+          {/* Text Color for non-text layers */}
+          {selectedLayer.type !== 'text' && selectedLayer.type !== 'button' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3 flex items-center">
+                <i className="fas fa-palette mr-2 text-purple-600"></i>
+                Color
+              </label>
+              <ColorPicker
+                value={selectedLayer.style.color || '#000000'}
+                onChange={(color) => onUpdateProperty('style.color', color)}
               />
             </div>
           )}

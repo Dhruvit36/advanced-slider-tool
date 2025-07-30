@@ -87,13 +87,6 @@ export function ColorPicker({ value, onChange, className = '' }: ColorPickerProp
   };
 
   // Quick color palette
-  const quickColors = [
-    ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'],
-    ['#DDA0DD', '#98D8E8', '#F7DC6F', '#BB8FCE', '#F8C471'],
-    ['#85C1E9', '#8E44AD', '#27AE60', '#E91E63', '#FF9800'],
-    ['#000000', '#424242', '#9E9E9E', '#BDBDBD', '#FFFFFF']
-  ];
-
   // Draw saturation/lightness canvas
   const drawSaturationCanvas = () => {
     const canvas = canvasRef.current;
@@ -391,33 +384,6 @@ export function ColorPicker({ value, onChange, className = '' }: ColorPickerProp
             {Math.round(hue)}°, {Math.round(saturation)}%, {Math.round(lightness)}%
           </div>
         )}
-      </div>
-
-      {/* Quick Colors */}
-      <div>
-        <div className="text-xs font-medium text-gray-600 mb-2">Quick Colors</div>
-        <div className="space-y-1">
-          {quickColors.map((row, rowIndex) => (
-            <div key={rowIndex} className="flex space-x-1">
-              {row.map((color) => (
-                <button
-                  key={color}
-                  onClick={() => {
-                    onChange(color);
-                    setHexInput(color);
-                  }}
-                  className={`flex-1 h-8 rounded border-2 hover:scale-105 transition-all ${
-                    value === color 
-                      ? 'border-blue-500 ring-2 ring-blue-200' 
-                      : 'border-gray-300 hover:border-gray-400'
-                  }`}
-                  style={{ backgroundColor: color }}
-                  title={color}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

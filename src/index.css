@@ -1045,3 +1045,47 @@ input[type="color"]::-moz-color-swatch {
 .progress-dot-bounce {
   animation: indicator-bounce 1s infinite;
 }
+
+/* Custom slider styling for typography editor */
+.slider {
+  background: #e5e7eb;
+  height: 8px;
+  border-radius: 4px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.slider:hover::-webkit-slider-thumb {
+  background: #2563eb;
+  transform: scale(1.1);
+}
+
+.slider:hover::-moz-range-thumb {
+  background: #2563eb;
+  transform: scale(1.1);
+}
