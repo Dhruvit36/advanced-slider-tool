@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useSlider } from '../context/SliderContext';
 import { useTemplateManager } from '../utils/templates';
 import { ExportModal } from './ExportModal';
-import { KeyboardShortcuts, useKeyboardShortcuts } from './KeyboardShortcuts';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const { state, dispatch } = useSlider();

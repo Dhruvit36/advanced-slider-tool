@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 interface KeyboardShortcutsProps {
   isOpen: boolean;
@@ -67,31 +67,4 @@ export function KeyboardShortcuts({ isOpen, onClose }: KeyboardShortcutsProps) {
       </div>
     </div>
   );
-}
-
-export function useKeyboardShortcuts() {
-  const [showShortcuts, setShowShortcuts] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Show shortcuts with F1 or Ctrl+?
-      if (e.key === 'F1' || (e.ctrlKey && e.key === '/')) {
-        e.preventDefault();
-        setShowShortcuts(true);
-      }
-      
-      // Close shortcuts with Escape
-      if (e.key === 'Escape') {
-        setShowShortcuts(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  return {
-    showShortcuts,
-    setShowShortcuts
-  };
 }
