@@ -808,6 +808,12 @@ input[type="color"]::-moz-color-swatch {
 }
 
 /* Timeline Styles */
+.timeline-container {
+  overflow: hidden !important;
+  position: relative;
+  contain: layout style paint;
+}
+
 .timeline-track {
   background: linear-gradient(to right, transparent 0%, transparent 100%);
   background-size: 50px 100%;
@@ -818,6 +824,8 @@ input[type="color"]::-moz-color-swatch {
     #e5e7eb 49px,
     #e5e7eb 50px
   );
+  overflow: hidden !important;
+  max-width: 100%;
 }
 
 /* Timeline Resize Handle */
@@ -858,4 +866,123 @@ input[type="color"]::-moz-color-swatch {
 
 .btn-secondary:hover {
   @apply bg-gray-300 transform scale-105;
+}
+
+/* Timeline Animation Block Dragging Styles */
+.timeline-block-dragging {
+  transition: none !important;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.timeline-block-resizing {
+  transition: none !important;
+  z-index: 1000;
+}
+
+/* Timeline Block Resize Handles */
+.timeline-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.timeline-resize-handle:before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 1px;
+}
+
+.timeline-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.timeline-resize-handle.left {
+  left: 0;
+  cursor: ew-resize;
+}
+
+.timeline-resize-handle.right {
+  right: 0;
+  cursor: ew-resize;
+}
+
+/* Timeline Block Hover Effects */
+.timeline-block:hover .timeline-resize-handle {
+  opacity: 1;
+}
+
+/* Dragging Feedback Tooltip */
+.timeline-drag-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 1001;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.timeline-drag-tooltip::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 4px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+/* Timeline Grid Lines Enhancement */
+.timeline-grid-enhanced {
+  background-image: 
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 49px,
+      rgba(229, 231, 235, 0.6) 49px,
+      rgba(229, 231, 235, 0.6) 50px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 9px,
+      rgba(229, 231, 235, 0.3) 9px,
+      rgba(229, 231, 235, 0.3) 10px
+    );
+  background-size: 50px 100%, 10px 100%;
+}
+
+/* Timeline Track Hover Enhancement */
+.timeline-track:hover {
+  background-color: rgba(249, 250, 251, 0.8);
+}
+
+/* Selection States */
+.timeline-block-selected {
+  box-shadow: 
+    0 0 0 2px rgba(59, 130, 246, 0.5),
+    0 4px 12px rgba(59, 130, 246, 0.3);
+  z-index: 5;
+}
+
+.timeline-block-selected .timeline-resize-handle {
+  opacity: 1;
+  background: rgba(59, 130, 246, 0.2);
 }

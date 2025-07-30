@@ -1,23 +1,32 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useSlider } from '../context/SliderContext';
-import { CleanDropdown } from './ui/CleanDropdown';
+import { TimelineControls } from './timeline/TimelineControls';
+import { LayersPanel } from './timeline/LayersPanel';
+import { TimelineMarkers } from './timeline/TimelineMarkers';
+import { AnimationBlock } from './timeline/AnimationBlock';
+import { Layer, Slide } from '../types';
 
 export function Timeline() {
   const { state, dispatch } = useSlider();
-  const [isDragging, setIsDragging] = useState(false);
-  const [timelineHeight, setTimelineHeight] = useState(128); // Default height in pixels
+  const [timelineHeight, setTimelineHeight] = useState(128);
   const [timelineScale, setTimelineScale] = useState('100%');
   const [isResizing, setIsResizing] = useState(false);
+  const [hoveredLayer, setHoveredLayer] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
   const timelineRef = useRef<HTMLDivElement>(null);
-  const playheadRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
 
-  // Use global state instead of local state
+  // Use global state
   const isPlaying = state.isPlaying;
   const currentTime = state.currentTime;
-  const currentSlide = state.project?.slides[state.currentSlideIndex];
-  const maxTime = currentSlide?.duration || 15000;
+  const currentSlide: Slide | undefined = state.project?.slides[state.currentSlideIndex];
+  
+  const maxTime = useMemo(() => {
+    return currentSlide?.duration || 15000;
+  }, [currentSlide?.duration]);
 
+  // Animation loop
   useEffect(() => {
     if (isPlaying) {
       const startTime = Date.now() - currentTime;
@@ -47,12 +56,12 @@ export function Timeline() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, maxTime]);
+  }, [isPlaying, maxTime, currentTime, dispatch]);
 
+  // Timeline controls
   const togglePlayback = () => {
     if (!isPlaying) {
-      // If we're at the end (or very close to it), restart from beginning
-      if (currentTime >= maxTime - 100) { // 100ms buffer
+      if (currentTime >= maxTime - 100) {
         dispatch({ type: 'SET_CURRENT_TIME', payload: 0 });
       }
       dispatch({ type: 'SET_PLAYING', payload: true });
@@ -66,8 +75,22 @@ export function Timeline() {
     dispatch({ type: 'SET_PLAYING', payload: false });
   };
 
+  const formatTime = (ms: number) => {
+    const seconds = ms / 1000;
+    return `${seconds.toFixed(1)}s`;
+  };
+
+  // Timeline click handler - Allow clicks to set timeline position
   const handleTimelineClick = (e: React.MouseEvent) => {
-    if (!timelineRef.current || isDragging) return;
+    if (!timelineRef.current) return;
+    
+    const target = e.target as HTMLElement;
+    // Check if click was on an animation block or track
+    if (target.closest('[data-animation-block]') || target.closest('[data-animation-track]')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     
     const rect = timelineRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -75,41 +98,57 @@ export function Timeline() {
     const newTime = (x / width) * maxTime;
     
     dispatch({ type: 'SET_CURRENT_TIME', payload: Math.max(0, Math.min(newTime, maxTime)) });
-  };
-
-  const handlePlayheadMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
+    // Stop playback when manually clicking timeline
     dispatch({ type: 'SET_PLAYING', payload: false });
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || !timelineRef.current) return;
+  // Layer position calculation
+  const getLayerPosition = (layer: Layer) => {
+    const start = Math.max(0, Math.min(layer.animation.delay, maxTime));
+    const duration = Math.max(100, Math.min(layer.animation.duration, maxTime - start));
+    const startPercent = Math.max(0, Math.min((start / maxTime) * 100, 100));
+    const widthPercent = Math.max(0, Math.min((duration / maxTime) * 100, 100 - startPercent));
     
-    const rect = timelineRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const width = rect.width;
-    const newTime = (x / width) * maxTime;
-    
-    dispatch({ type: 'SET_CURRENT_TIME', payload: Math.max(0, Math.min(newTime, maxTime)) });
+    return { left: `${startPercent}%`, width: `${widthPercent}%` };
   };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  // Tooltip handlers
+  const handleMouseEnter = (e: React.MouseEvent, layerId: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setTooltipPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top - 10
+    });
+    setHoveredLayer(layerId);
   };
 
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, maxTime]);
+  const handleMouseLeave = () => {
+    setHoveredLayer(null);
+  };
+
+  // Update layer animation properties
+  const updateLayerAnimation = (layerId: string, updates: { delay?: number; duration?: number }) => {
+    if (!currentSlide) return;
+    
+    dispatch({
+      type: 'UPDATE_LAYER',
+      payload: {
+        slideId: currentSlide.id,
+        layerId,
+        updates: {
+          animation: {
+            ...currentSlide.layers.find(l => l.id === layerId)?.animation,
+            ...updates
+          }
+        }
+      }
+    });
+  };
+
+  // Handle layer selection
+  const handleSelectLayer = (layerId: string) => {
+    dispatch({ type: 'SELECT_LAYER', payload: layerId });
+  };
 
   // Timeline resize handlers
   const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -119,7 +158,6 @@ export function Timeline() {
 
   const handleResizeMouseMove = (e: MouseEvent) => {
     if (!isResizing) return;
-    
     const newHeight = Math.max(100, Math.min(400, timelineHeight + (e.movementY * -1)));
     setTimelineHeight(newHeight);
   };
@@ -140,44 +178,17 @@ export function Timeline() {
     }
   }, [isResizing, timelineHeight]);
 
-  // Keyboard shortcuts for timeline height
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        switch (e.key) {
-          case 'ArrowUp':
-            if (e.shiftKey) {
-              e.preventDefault();
-              setTimelineHeight(prev => Math.min(400, prev + 20));
-            }
-            break;
-          case 'ArrowDown':
-            if (e.shiftKey) {
-              e.preventDefault();
-              setTimelineHeight(prev => Math.max(100, prev - 20));
-            }
-            break;
-        }
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+  // Memoized grid lines
+  const timelineGridLines = useMemo(() => {
+    const stableMaxTime = 15000;
+    return Array.from({ length: Math.ceil(stableMaxTime / 1000) }, (_, i) => (
+      <div
+        key={`grid-${i}`}
+        className="absolute top-0 bottom-0 w-px bg-gray-400"
+        style={{ left: `${(i / Math.ceil(stableMaxTime / 1000)) * 100}%` }}
+      />
+    ));
   }, []);
-
-  const formatTime = (ms: number) => {
-    const seconds = ms / 1000;
-    return `${seconds.toFixed(1)}s`;
-  };
-
-  const getLayerPosition = (layer: any) => {
-    const start = layer.animation.delay;
-    const duration = layer.animation.duration;
-    const startPercent = (start / maxTime) * 100;
-    const widthPercent = (duration / maxTime) * 100;
-    
-    return { left: `${startPercent}%`, width: `${widthPercent}%` };
-  };
 
   return (
     <div 
@@ -198,259 +209,141 @@ export function Timeline() {
       </div>
 
       {/* Timeline Controls */}
-      <div className="flex items-center justify-between px-2 sm:px-4 py-2 border-b border-border-light">
-        <div className="flex items-center space-x-2 sm:space-x-3">
-          <button
-            onClick={togglePlayback}
-            className="bg-primary text-white px-2 sm:px-3 py-1 rounded hover:opacity-90 text-sm flex items-center"
-          >
-            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} mr-1`}></i>
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
-          <button
-            onClick={resetTimeline}
-            className="bg-gray-500 text-white px-2 sm:px-3 py-1 rounded hover:opacity-90 text-sm flex items-center"
-          >
-            <i className="fas fa-stop mr-1"></i>
-            Stop
-          </button>
-          <span className="text-xs sm:text-sm text-gray-600 flex items-center">
-            <i className="fas fa-clock mr-1"></i>
-            {formatTime(currentTime)} / {formatTime(maxTime)}
-          </span>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <div className="hidden sm:flex items-center space-x-2">
-            <i className="fas fa-ruler-horizontal text-xs text-gray-500"></i>
-            <span className="text-xs text-gray-500">Scale:</span>
-            <CleanDropdown
-              value={timelineScale}
-              onChange={setTimelineScale}
-              options={[
-                { value: '50%', label: '50%' },
-                { value: '75%', label: '75%' },
-                { value: '100%', label: '100%' },
-                { value: '150%', label: '150%' },
-                { value: '200%', label: '200%' }
-              ]}
-              variant="compact"
-            />
-          </div>
-          <div className="flex items-center space-x-1">
-            <i className="fas fa-arrows-alt-v text-xs text-gray-500"></i>
-            <span className="text-xs text-gray-500">Height:</span>
-            <span className="text-xs text-gray-600 font-mono">{timelineHeight}px</span>
-            <div className="flex items-center space-x-1 ml-2">
-              <button
-                onClick={() => setTimelineHeight(100)}
-                className={`text-xs px-1 py-0.5 rounded transition-colors ${
-                  timelineHeight === 100 ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-blue-600'
-                }`}
-                title="Compact (100px)"
-              >
-                S
-              </button>
-              <button
-                onClick={() => setTimelineHeight(150)}
-                className={`text-xs px-1 py-0.5 rounded transition-colors ${
-                  timelineHeight === 150 ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-blue-600'
-                }`}
-                title="Medium (150px)"
-              >
-                M
-              </button>
-              <button
-                onClick={() => setTimelineHeight(200)}
-                className={`text-xs px-1 py-0.5 rounded transition-colors ${
-                  timelineHeight === 200 ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-blue-600'
-                }`}
-                title="Large (200px)"
-              >
-                L
-              </button>
-              <button
-                onClick={() => setTimelineHeight(300)}
-                className={`text-xs px-1 py-0.5 rounded transition-colors ${
-                  timelineHeight === 300 ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-blue-600'
-                }`}
-                title="Extra Large (300px)"
-              >
-                XL
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <TimelineControls
+        isPlaying={isPlaying}
+        currentTime={currentTime}
+        maxTime={maxTime}
+        timelineHeight={timelineHeight}
+        timelineScale={timelineScale}
+        onTogglePlayback={togglePlayback}
+        onReset={resetTimeline}
+        onHeightChange={setTimelineHeight}
+        onScaleChange={setTimelineScale}
+        formatTime={formatTime}
+      />
 
       {/* Timeline Track */}
-      <div className="flex-1 relative">
-        <div
-          ref={timelineRef}
-          className="h-full bg-gray-100 relative cursor-pointer border-b border-gray-200 select-none overflow-hidden"
-          onClick={handleTimelineClick}
-          style={{
-            backgroundImage: `repeating-linear-gradient(
-              90deg,
-              transparent,
-              transparent 49px,
-              #e5e7eb 49px,
-              #e5e7eb 50px
-            )`,
-            backgroundSize: '50px 100%'
-          }}
-        >
-          {/* Time Markers */}
-          <div className="absolute top-0 left-0 right-0 h-6 bg-gray-200 border-b border-gray-300">
-            {Array.from({ length: Math.ceil(maxTime / 1000) + 1 }, (_, i) => {
-              // Calculate equal spacing: distribute markers evenly across 100% width
-              const totalMarkers = Math.ceil(maxTime / 1000); // 15 markers (0-14s)
-              const position = (i / totalMarkers) * 100; // Equal spacing from 0% to 100%
-              
-              return (
-                <div
-                  key={i}
-                  className="absolute top-0 bottom-0 border-l border-gray-400"
-                  style={{ left: `${position}%` }}
-                >
-                  <span className="absolute top-0.5 left-1 text-xs text-gray-600 font-mono flex items-center">
-                    <i className="fas fa-clock mr-1" style={{ fontSize: '8px' }}></i>
-                    {i}s
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+      <div className="flex-1 relative flex">
+        {/* Left Panel - Layer Information */}
+        <LayersPanel 
+          layers={currentSlide?.layers || []} 
+          timelineHeight={timelineHeight} 
+        />
 
-          {/* Progress Bar */}
-          <div 
-            className="absolute top-6 left-0 h-1 bg-gradient-to-r from-red-400 to-red-500 opacity-40 transition-all duration-150 shadow-sm"
-            style={{ width: `${(currentTime / maxTime) * 100}%` }}
+        {/* Right Panel - Timeline Tracks */}
+        <div className="flex-1 relative overflow-hidden" data-timeline-container>
+          <div
+            ref={timelineRef}
+            className="h-full bg-gray-100 relative cursor-pointer border-b border-gray-200 select-none overflow-hidden"
+            onClick={handleTimelineClick}
+            style={{
+              backgroundImage: `repeating-linear-gradient(
+                90deg,
+                transparent,
+                transparent 49px,
+                #e5e7eb 49px,
+                #e5e7eb 50px
+              )`,
+              backgroundSize: '50px 100%'
+            }}
           >
-            {/* Progress indicator icon */}
-            <div 
-              className="absolute right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2"
-              style={{ right: '0px' }}
-            >
-              <i className="fas fa-play text-red-500" style={{ fontSize: '6px' }}></i>
+            {/* Timeline Markers Background */}
+            <div className="absolute top-0 left-0 right-0 h-6 bg-gray-200 border-b border-gray-300">
+              <TimelineMarkers />
             </div>
-          </div>
+            
+            {/* Spacer for timeline markers */}
+            <div className="h-6"></div>
 
-          {/* Layer Tracks */}
-          <div className="mt-7 space-y-1 p-2" style={{ maxHeight: `${timelineHeight - 80}px` }}>
-            {currentSlide?.layers.map((layer, index) => (
-              <div key={layer.id} className="relative h-8 bg-white rounded border border-gray-300 shadow-sm overflow-hidden flex-shrink-0 hover:shadow-md transition-shadow">
-                <div className="absolute left-2 top-1.5 text-xs text-gray-600 z-10 font-medium flex items-center">
-                  <i className={`fas ${
-                    layer.type === 'text' ? 'fa-font' :
-                    layer.type === 'button' ? 'fa-hand-pointer' :
-                    layer.type === 'image' ? 'fa-image' :
-                    'fa-shapes'
-                  } mr-1`} style={{ 
-                    color: layer.type === 'text' ? '#3b82f6' : 
-                           layer.type === 'button' ? '#10b981' : 
-                           layer.type === 'image' ? '#8b5cf6' : '#f59e0b',
-                    fontSize: '10px'
-                  }}></i>
-                  <span className="inline-block w-2 h-2 rounded-full mr-1" style={{
-                    backgroundColor: layer.type === 'text' ? '#3b82f6' : 
-                                   layer.type === 'button' ? '#10b981' : 
-                                   layer.type === 'image' ? '#8b5cf6' : '#f59e0b'
-                  }} />
-                  {layer.type}: {layer.content.slice(0, 12)}...
-                </div>
-                
-                {/* Animation Bar */}
-                <div
-                  className="absolute top-0 bottom-0 bg-gradient-to-r from-blue-400 to-blue-600 rounded opacity-70 transition-all duration-200 hover:opacity-90"
-                  style={getLayerPosition(layer)}
+            {/* Animation Tracks */}
+            <div className="space-y-0 overflow-visible" style={{ maxHeight: `${timelineHeight - 80}px`, overflowY: 'auto' }}>
+              {currentSlide?.layers.map((layer) => (
+                <div 
+                  key={layer.id} 
+                  className="h-10 bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150 relative overflow-visible"
+                  onClick={(e) => e.stopPropagation()}
+                  data-animation-track
                 >
-                  {/* Animation type indicator */}
-                  <div className="absolute left-1 top-1/2 transform -translate-y-1/2 text-white">
-                    <i className="fas fa-magic" style={{ fontSize: '8px' }}></i>
+                  <AnimationBlock
+                    layer={layer}
+                    position={getLayerPosition(layer)}
+                    maxTime={maxTime}
+                    isSelected={state.selectedLayerId === layer.id}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                    onUpdateAnimation={updateLayerAnimation}
+                    onSelectLayer={handleSelectLayer}
+                  />
+                  
+                  {/* Timeline grid lines for reference */}
+                  <div className="absolute inset-0 pointer-events-none opacity-10">
+                    {timelineGridLines}
                   </div>
                 </div>
-                
-                {/* Animation Start Marker */}
-                <div
-                  className="absolute top-0 bottom-0 w-1 bg-green-500 rounded-l z-20 flex items-center justify-center"
-                  style={{ left: `${(layer.animation.delay / maxTime) * 100}%` }}
-                  title={`Start: ${layer.animation.delay}ms`}
+              ))}
+              
+              {/* Empty state for timeline tracks */}
+              {(!currentSlide?.layers || currentSlide.layers.length === 0) && (
+                <div 
+                  className="text-center text-gray-500 py-8"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <i className="fas fa-play text-white" style={{ fontSize: '4px' }}></i>
+                  <p className="text-xs text-gray-400">Timeline tracks will appear here</p>
                 </div>
-                
-                {/* Animation End Marker */}
-                <div
-                  className="absolute top-0 bottom-0 w-1 bg-red-500 rounded-r z-20 flex items-center justify-center"
-                  style={{ 
-                    left: `${((layer.animation.delay + layer.animation.duration) / maxTime) * 100}%` 
-                  }}
-                  title={`End: ${layer.animation.delay + layer.animation.duration}ms`}
-                >
-                  <i className="fas fa-stop text-white" style={{ fontSize: '4px' }}></i>
-                </div>
-              </div>
-            ))}
-            
-            {/* Empty state when no layers */}
-            {(!currentSlide?.layers || currentSlide.layers.length === 0) && (
-              <div className="text-center text-gray-500 py-8">
-                <div className="text-2xl mb-2">
-                  <i className="fas fa-layer-group"></i>
-                </div>
-                <p className="text-sm">No layers yet</p>
-                <p className="text-xs text-gray-400">Add some elements to see them here</p>
-              </div>
-            )}
-          </div>
-
-          {/* Playhead Line */}
-          <div
-            className="absolute top-6 bottom-0 w-0.5 bg-red-500 z-30 pointer-events-none shadow-sm"
-            style={{ left: `calc(${(currentTime / maxTime) * 100}% - 1px)` }}
-          >
-            {/* Playhead line indicator */}
-            <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1">
-              <i className="fas fa-caret-down text-red-500" style={{ fontSize: '8px' }}></i>
+              )}
             </div>
-          </div>
-          
-          {/* Playhead Handle - Enhanced design with smooth dragging */}
-          <div
-            ref={playheadRef}
-            className={`absolute top-0 bottom-0 z-40 group transition-transform duration-150 ${
-              isDragging ? 'cursor-grabbing scale-105' : 'cursor-grab hover:cursor-grab hover:scale-105'
-            }`}
-            style={{ 
-              left: `calc(${(currentTime / maxTime) * 100}% - 8px)`,
-              width: '16px'
-            }}
-            onMouseDown={handlePlayheadMouseDown}
-          >
-            {/* Playhead Top Handle - Rounded marker with icon */}
-            <div className="absolute top-6 left-1/2 transform -translate-x-1/2">
-              <div className={`w-4 h-4 bg-red-500 border-2 border-white shadow-lg rounded-full transition-all duration-150 flex items-center justify-center ${
-                isDragging ? 'scale-125 brightness-110' : 'group-hover:scale-110 group-hover:brightness-105'
-              }`} 
-              style={{ 
-                filter: 'drop-shadow(0 2px 4px rgba(239, 68, 68, 0.3))'
-              }}>
-                <i className="fas fa-grip-lines-vertical text-white" style={{ fontSize: '4px' }}></i>
-              </div>
-            </div>
-            
-            {/* Time Tooltip - Shows during dragging */}
-            {isDragging && (
-              <div className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-40 animate-fadeIn flex items-center">
-                <i className="fas fa-clock mr-1" style={{ fontSize: '8px' }}></i>
-                {formatTime(currentTime)}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-800" />
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Tooltip */}
+      {hoveredLayer && currentSlide && (
+        <div 
+          className="fixed pointer-events-none z-[9999]"
+          style={{ 
+            left: tooltipPosition.x,
+            top: tooltipPosition.y,
+            transform: 'translate(-50%, -100%)'
+          }}
+        >
+          <div className="bg-slate-800 backdrop-blur-sm text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-600 min-w-max">
+            <div className="text-sm font-semibold text-white mb-2 flex items-center">
+              <i className="fas fa-magic mr-2 text-blue-300"></i>
+              {currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.entrance}
+            </div>
+            <div className="text-xs text-slate-300 space-y-1">
+              <div className="flex justify-between items-center space-x-6">
+                <span className="text-slate-400">Layer</span>
+                <span className="font-medium text-white">
+                  {currentSlide.layers.find(l => l.id === hoveredLayer)?.content.slice(0, 18)}
+                </span>
+              </div>
+              <div className="flex justify-between items-center space-x-6">
+                <span className="text-slate-400">Start</span>
+                <span className="font-mono text-blue-300">
+                  {((currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.delay || 0) / 1000).toFixed(1)}s
+                </span>
+              </div>
+              <div className="flex justify-between items-center space-x-6">
+                <span className="text-slate-400">Duration</span>
+                <span className="font-mono text-green-300">
+                  {((currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.duration || 0) / 1000).toFixed(1)}s
+                </span>
+              </div>
+              <div className="flex justify-between items-center space-x-6">
+                <span className="text-slate-400">End</span>
+                <span className="font-mono text-purple-300">
+                  {(((currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.delay || 0) + 
+                     (currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.duration || 0)) / 1000).toFixed(1)}s
+                </span>
+              </div>
+            </div>
+            <div className="absolute top-full left-1/2 transform -translate-x-1/2">
+              <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-800"></div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
