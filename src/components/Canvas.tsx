@@ -388,16 +388,17 @@ export function Canvas() {
     
     return (
       <>
-        {/* Horizontal ruler */}
+        {/* Horizontal ruler - attached to top of canvas */}
         <div
           className="absolute bg-gray-100 border-b border-gray-300 shadow-sm"
           style={{
-            top: `calc(50% - ${(canvasHeight * zoom) / 2}px - ${rulerSize}px)`,
-            left: `calc(50% - ${(canvasWidth * zoom) / 2}px)`,
+            top: -rulerSize,
+            left: 0,
             width: canvasWidth * zoom,
             height: rulerSize,
-            fontSize: '10px',
-            zIndex: 15
+            fontSize: 10,
+            zIndex: 15,
+            transformOrigin: 'top left'
           }}
         >
           {/* Major tick marks and labels */}
@@ -409,8 +410,8 @@ export function Canvas() {
                 style={{
                   left: i * 50 * zoom,
                   bottom: 0,
-                  width: '1px',
-                  height: '8px'
+                  width: 1,
+                  height: 8
                 }}
               />
               {/* Number label */}
@@ -419,7 +420,7 @@ export function Canvas() {
                 style={{
                   left: i * 50 * zoom - 10,
                   top: 2,
-                  fontSize: '10px'
+                  fontSize: 10
                 }}
               >
                 {i * 50}
@@ -435,24 +436,25 @@ export function Canvas() {
                 style={{
                   left: i * 10 * zoom,
                   bottom: 0,
-                  width: '1px',
-                  height: '4px'
+                  width: 1,
+                  height: 4
                 }}
               />
             )
           ))}
         </div>
         
-        {/* Vertical ruler */}
+        {/* Vertical ruler - attached to left of canvas */}
         <div
           className="absolute bg-gray-100 border-r border-gray-300 shadow-sm"
           style={{
-            top: `calc(50% - ${(canvasHeight * zoom) / 2}px)`,
-            left: `calc(50% - ${(canvasWidth * zoom) / 2}px - ${rulerSize}px)`,
+            top: 0,
+            left: -rulerSize,
             width: rulerSize,
             height: canvasHeight * zoom,
-            fontSize: '10px',
-            zIndex: 15
+            fontSize: 10,
+            zIndex: 15,
+            transformOrigin: 'top left'
           }}
         >
           {/* Major tick marks and labels */}
@@ -464,8 +466,8 @@ export function Canvas() {
                 style={{
                   right: 0,
                   top: i * 50 * zoom,
-                  height: '1px',
-                  width: '8px'
+                  height: 1,
+                  width: 8
                 }}
               />
               {/* Number label */}
@@ -474,8 +476,8 @@ export function Canvas() {
                 style={{
                   right: 2,
                   top: i * 50 * zoom - 8,
-                  fontSize: '10px',
-                  width: '20px',
+                  fontSize: 10,
+                  width: 20,
                   textAlign: 'center'
                 }}
               >
@@ -492,26 +494,26 @@ export function Canvas() {
                 style={{
                   right: 0,
                   top: i * 10 * zoom,
-                  height: '1px',
-                  width: '4px'
+                  height: 1,
+                  width: 4
                 }}
               />
             )
           ))}
         </div>
         
-        {/* Corner */}
+        {/* Corner piece - attached to top-left corner */}
         <div
           className="absolute bg-gray-200 border-r border-b border-gray-300 shadow-sm flex items-center justify-center"
           style={{
-            top: `calc(50% - ${(canvasHeight * zoom) / 2}px - ${rulerSize}px)`,
-            left: `calc(50% - ${(canvasWidth * zoom) / 2}px - ${rulerSize}px)`,
+            top: -rulerSize,
+            left: -rulerSize,
             width: rulerSize,
             height: rulerSize,
             zIndex: 16
           }}
         >
-          <i className="fas fa-ruler-combined text-gray-500 text-xs"></i>
+          <i className="fas fa-ruler-combined text-gray-500" style={{ fontSize: 12 }}></i>
         </div>
       </>
     );
@@ -704,9 +706,6 @@ export function Canvas() {
         </button>
       </div>
 
-      {/* Rulers */}
-      {renderRulers()}
-
       {/* Canvas Area */}
       <div 
         className="flex items-center justify-center w-full h-full"
@@ -731,6 +730,9 @@ export function Canvas() {
           }}
           onClick={() => dispatch({ type: 'SELECT_LAYER', payload: null })}
         >
+          {/* Rulers attached to canvas */}
+          {renderRulers()}
+          
           {/* Grid */}
           {renderGrid()}
 
