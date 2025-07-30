@@ -5,3 +5,4 @@ export { ScaleSelect } from './ScaleSelect';
 export { CompactSelect } from './CompactSelect';
 export { EnhancedDropdown } from './EnhancedDropdown';
 export { CleanDropdown } from './CleanDropdown';
+export { ColorPicker } from './ColorPicker';

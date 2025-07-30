@@ -6,11 +6,31 @@ import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
-  const { state, dispatch } = useSlider();
+  const { state, dispatch, canUndo, canRedo, undo, redo, saveProject, loadProject } = useSlider();
   const { templates, applyTemplate } = useTemplateManager();
   const [showTemplates, setShowTemplates] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const { showShortcuts, setShowShortcuts } = useKeyboardShortcuts();
+
+  const handleLoadProject = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const content = event.target?.result as string;
+          if (content) {
+            loadProject(content);
+          }
+        };
+        reader.readAsText(file);
+      }
+    };
+    input.click();
+  };
 
   const addSlide = () => {
     if (!state.project) return;
@@ -55,6 +75,33 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           
           <div className="hidden md:flex items-center space-x-1">
             <button 
+              onClick={undo}
+              disabled={!canUndo}
+              className={`px-3 py-1 rounded text-sm transition-all flex items-center ${
+                canUndo 
+                  ? 'bg-white bg-opacity-20 hover:bg-opacity-30' 
+                  : 'bg-white bg-opacity-10 cursor-not-allowed opacity-50'
+              }`}
+              title="Undo (Ctrl+Z)"
+            >
+              <i className="fas fa-undo mr-1"></i>
+              Undo
+            </button>
+            <button 
+              onClick={redo}
+              disabled={!canRedo}
+              className={`px-3 py-1 rounded text-sm transition-all flex items-center ${
+                canRedo 
+                  ? 'bg-white bg-opacity-20 hover:bg-opacity-30' 
+                  : 'bg-white bg-opacity-10 cursor-not-allowed opacity-50'
+              }`}
+              title="Redo (Ctrl+Y)"
+            >
+              <i className="fas fa-redo mr-1"></i>
+              Redo
+            </button>
+            <div className="w-px h-6 bg-white bg-opacity-30 mx-1"></div>
+            <button 
               onClick={addSlide}
               className="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded text-sm transition-all flex items-center"
             >
@@ -84,9 +131,21 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
               <i className={`fas ${state.isPlaying ? 'fa-pause' : 'fa-play'} mr-1`}></i>
               {state.isPlaying ? 'Pause' : 'Preview'}
             </button>
-            <button className="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded text-sm transition-all flex items-center">
+            <button 
+              onClick={saveProject}
+              className="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded text-sm transition-all flex items-center"
+              title="Save Project"
+            >
               <i className="fas fa-save mr-1"></i>
               Save
+            </button>
+            <button 
+              onClick={handleLoadProject}
+              className="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-1 rounded text-sm transition-all flex items-center"
+              title="Load Project"
+            >
+              <i className="fas fa-folder-open mr-1"></i>
+              Load
             </button>
             <button 
               onClick={() => setShowExport(true)}

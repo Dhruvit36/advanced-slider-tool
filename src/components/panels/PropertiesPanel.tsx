@@ -1,5 +1,6 @@
 import React from 'react';
 import { Layer } from '../../types';
+import { ColorPicker } from '../ui/ColorPicker';
 
 interface PropertiesPanelProps {
   selectedLayer: Layer | undefined;
@@ -160,36 +161,10 @@ export function PropertiesPanel({ selectedLayer, onUpdateProperty }: PropertiesP
               <i className="fas fa-palette mr-2 text-purple-600"></i>
               Text Color
             </label>
-            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 shadow-sm">
-              <div className="flex items-center space-x-4">
-                <div className="relative group">
-                  <input
-                    type="color"
-                    value={selectedLayer.style.color}
-                    onChange={(e) => onUpdateProperty('style.color', e.target.value)}
-                    className="w-16 h-16 border-0 rounded-xl cursor-pointer shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
-                    style={{
-                      background: selectedLayer.style.color,
-                      WebkitAppearance: 'none',
-                      appearance: 'none'
-                    }}
-                  />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <i className="fas fa-hashtag text-gray-500 text-sm"></i>
-                    <span className="text-xs font-medium text-gray-600 uppercase tracking-wider">Hex Code</span>
-                  </div>
-                  <input
-                    type="text"
-                    value={selectedLayer.style.color}
-                    onChange={(e) => onUpdateProperty('style.color', e.target.value)}
-                    className="w-full p-3 bg-white border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-mono tracking-wider shadow-sm hover:shadow-md"
-                    placeholder="#000000"
-                  />
-                </div>
-              </div>
-            </div>
+            <ColorPicker
+              value={selectedLayer.style.color || '#000000'}
+              onChange={(color) => onUpdateProperty('style.color', color)}
+            />
           </div>
 
           {selectedLayer.type === 'button' && (
@@ -198,36 +173,10 @@ export function PropertiesPanel({ selectedLayer, onUpdateProperty }: PropertiesP
                 <i className="fas fa-fill-drip mr-2 text-blue-600"></i>
                 Background Color
               </label>
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200 shadow-sm">
-                <div className="flex items-center space-x-4">
-                  <div className="relative group">
-                    <input
-                      type="color"
-                      value={selectedLayer.style.backgroundColor}
-                      onChange={(e) => onUpdateProperty('style.backgroundColor', e.target.value)}
-                      className="w-16 h-16 border-0 rounded-xl cursor-pointer shadow-lg transition-all duration-200 hover:scale-105 hover:shadow-xl"
-                      style={{
-                        background: selectedLayer.style.backgroundColor,
-                        WebkitAppearance: 'none',
-                        appearance: 'none'
-                      }}
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-2">
-                      <i className="fas fa-hashtag text-gray-500 text-sm"></i>
-                      <span className="text-xs font-medium text-gray-600 uppercase tracking-wider">Hex Code</span>
-                    </div>
-                    <input
-                      type="text"
-                      value={selectedLayer.style.backgroundColor}
-                      onChange={(e) => onUpdateProperty('style.backgroundColor', e.target.value)}
-                      className="w-full p-3 bg-white border-2 border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all font-mono tracking-wider shadow-sm hover:shadow-md"
-                      placeholder="#000000"
-                    />
-                  </div>
-                </div>
-              </div>
+              <ColorPicker
+                value={selectedLayer.style.backgroundColor || '#3b82f6'}
+                onChange={(color) => onUpdateProperty('style.backgroundColor', color)}
+              />
             </div>
           )}
 

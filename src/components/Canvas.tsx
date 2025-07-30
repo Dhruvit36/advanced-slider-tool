@@ -27,6 +27,13 @@ interface CanvasSettings {
   showGuides: boolean;
 }
 
+interface AnimationState {
+  [layerId: string]: {
+    isAnimating: boolean;
+    currentAnimation: 'entrance' | 'exit' | null;
+  };
+}
+
 export function Canvas() {
   const { state, dispatch } = useSlider();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -41,6 +48,8 @@ export function Canvas() {
     showGuides: true
   });
   const [alignmentGuides, setAlignmentGuides] = useState<{x: number[], y: number[]}>({x: [], y: []});
+  const [animationStates, setAnimationStates] = useState<AnimationState>({});
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
   const currentSlide = state.project?.slides[state.currentSlideIndex];
 
@@ -48,6 +57,56 @@ export function Canvas() {
   const snapToGrid = (value: number) => {
     if (!settings.snapToGrid) return value;
     return Math.round(value / settings.gridSize) * settings.gridSize;
+  };
+
+  // Animation preview functions
+  const getAnimationClassName = (animationName: string) => {
+    return animationName.toLowerCase().replace(/\s+/g, '-');
+  };
+
+  const previewLayerAnimation = (layer: Layer, animationType: 'entrance' | 'exit') => {
+    const animationName = animationType === 'entrance' ? layer.animation.entrance : layer.animation.exit;
+    const className = getAnimationClassName(animationName);
+    
+    setAnimationStates(prev => ({
+      ...prev,
+      [layer.id]: {
+        isAnimating: true,
+        currentAnimation: animationType
+      }
+    }));
+
+    // Reset animation after completion
+    setTimeout(() => {
+      setAnimationStates(prev => ({
+        ...prev,
+        [layer.id]: {
+          isAnimating: false,
+          currentAnimation: null
+        }
+      }));
+    }, layer.animation.duration + layer.animation.delay);
+  };
+
+  const previewAllAnimations = () => {
+    if (!currentSlide) return;
+    
+    setIsPreviewMode(true);
+    
+    // Sort layers by delay for proper animation sequence
+    const sortedLayers = [...currentSlide.layers].sort((a, b) => a.animation.delay - b.animation.delay);
+    
+    sortedLayers.forEach((layer) => {
+      setTimeout(() => {
+        previewLayerAnimation(layer, 'entrance');
+      }, layer.animation.delay);
+    });
+
+    // Reset preview mode after all animations complete
+    const maxDuration = Math.max(...sortedLayers.map(l => l.animation.delay + l.animation.duration));
+    setTimeout(() => {
+      setIsPreviewMode(false);
+    }, maxDuration + 500);
   };
 
   // Calculate alignment guides
@@ -161,8 +220,35 @@ export function Canvas() {
     }
   }, [dragging, alignmentGuides]);
 
+  // Listen for animation preview trigger from keyboard shortcut
+  useEffect(() => {
+    const handleAnimationPreview = () => {
+      if (!isPreviewMode) {
+        previewAllAnimations();
+      }
+    };
+
+    document.addEventListener('triggerAnimationPreview', handleAnimationPreview);
+    return () => document.removeEventListener('triggerAnimationPreview', handleAnimationPreview);
+  }, [isPreviewMode]);
+
   const renderLayer = (layer: Layer) => {
     const isSelected = state.selectedLayerId === layer.id;
+    const animationState = animationStates[layer.id];
+    
+    // Build animation class names
+    let animationClasses = '';
+    if (animationState?.isAnimating && animationState.currentAnimation) {
+      const animationName = animationState.currentAnimation === 'entrance' 
+        ? layer.animation.entrance 
+        : layer.animation.exit;
+      animationClasses = getAnimationClassName(animationName);
+    }
+    
+    // In preview mode, hide layers initially and show them during their entrance animation
+    const shouldShow = !isPreviewMode || 
+                      (animationState?.isAnimating && animationState.currentAnimation === 'entrance') ||
+                      (animationState?.currentAnimation === null && isPreviewMode);
     
     const layerStyle: React.CSSProperties = {
       position: 'absolute',
@@ -175,24 +261,28 @@ export function Canvas() {
       color: layer.style.color,
       backgroundColor: layer.style.backgroundColor,
       borderRadius: layer.style.borderRadius ? layer.style.borderRadius * zoom : undefined,
-      opacity: layer.style.opacity,
+      opacity: shouldShow ? layer.style.opacity : 0,
       transform: `rotate(${layer.style.rotation}deg)`,
       zIndex: layer.style.zIndex,
-      cursor: 'move',
+      cursor: dragging ? 'grabbing' : 'move',
       userSelect: 'none',
       display: 'flex',
       alignItems: 'center',
       justifyContent: layer.type === 'button' ? 'center' : 'flex-start',
-      border: isSelected ? '2px solid #0077ff' : 'none',
-      boxSizing: 'border-box'
+      border: isSelected && !isPreviewMode ? '2px solid #0077ff' : 'none',
+      boxSizing: 'border-box',
+      animationDuration: `${layer.animation.duration}ms`,
+      animationDelay: isPreviewMode ? `${layer.animation.delay}ms` : '0ms',
+      animationFillMode: 'forwards',
+      animationTimingFunction: layer.animation.easing
     };
 
     return (
       <div
         key={layer.id}
         style={layerStyle}
-        onMouseDown={(e) => handleLayerMouseDown(e, layer)}
-        className={`layer ${layer.type === 'button' ? 'hover:opacity-80 transition-opacity' : ''}`}
+        onMouseDown={(e) => !isPreviewMode && handleLayerMouseDown(e, layer)}
+        className={`layer ${animationClasses} ${layer.type === 'button' ? 'hover:opacity-80 transition-opacity' : ''}`}
       >
         {layer.type === 'text' && (
           <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
@@ -537,6 +627,19 @@ export function Canvas() {
 
       {/* Advanced Canvas Controls */}
       <div className="absolute top-4 left-80 z-20 flex items-center space-x-2">
+        <button
+          onClick={previewAllAnimations}
+          disabled={isPreviewMode}
+          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+            isPreviewMode
+              ? 'bg-purple-500 text-white shadow-md cursor-not-allowed opacity-75'
+              : 'bg-purple-500 hover:bg-purple-600 text-white shadow-md'
+          }`}
+          title="Preview Animations (Space)"
+        >
+          <i className={`fas ${isPreviewMode ? 'fa-spinner fa-spin' : 'fa-play'} mr-1`}></i>
+          {isPreviewMode ? 'Previewing...' : 'Preview'}
+        </button>
         <button
           onClick={() => setSettings(prev => ({ ...prev, showGrid: !prev.showGrid }))}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${

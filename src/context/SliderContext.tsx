@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useCallback } from 'react';
 import { SliderProject, Slide, Layer } from '../types';
+import { useUndoRedo } from '../hooks/useUndoRedo';
 
 interface SliderState {
   project: SliderProject | null;
@@ -19,7 +20,9 @@ type SliderAction =
   | { type: 'DELETE_LAYER'; payload: { slideId: string; layerId: string } }
   | { type: 'SELECT_LAYER'; payload: string | null }
   | { type: 'SET_PLAYING'; payload: boolean }
-  | { type: 'SET_CURRENT_TIME'; payload: number };
+  | { type: 'SET_CURRENT_TIME'; payload: number }
+  | { type: 'UNDO' }
+  | { type: 'REDO' };
 
 const initialState: SliderState = {
   project: {
@@ -221,13 +224,110 @@ function sliderReducer(state: SliderState, action: SliderAction): SliderState {
 const SliderContext = createContext<{
   state: SliderState;
   dispatch: (action: SliderAction) => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
+  saveProject: () => void;
+  loadProject: (projectData: string) => void;
 } | null>(null);
 
 export function SliderProvider({ children }: { children: any }) {
-  const [state, dispatch] = useReducer(sliderReducer, initialState);
+  const [uiState, setUiState] = useReducer((state: Pick<SliderState, 'currentSlideIndex' | 'selectedLayerId' | 'isPlaying' | 'currentTime'>, action: SliderAction) => {
+    switch (action.type) {
+      case 'SET_CURRENT_SLIDE':
+        return { ...state, currentSlideIndex: action.payload };
+      case 'SELECT_LAYER':
+        return { ...state, selectedLayerId: action.payload };
+      case 'SET_PLAYING':
+        return { ...state, isPlaying: action.payload };
+      case 'SET_CURRENT_TIME':
+        return { ...state, currentTime: action.payload };
+      default:
+        return state;
+    }
+  }, {
+    currentSlideIndex: 0,
+    selectedLayerId: null,
+    isPlaying: false,
+    currentTime: 0
+  });
+
+  const {
+    state: project,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    addToHistory
+  } = useUndoRedo(initialState.project!);
+
+  const dispatch = useCallback((action: SliderAction) => {
+    // Handle UI-only actions that don't affect project state
+    if (['SET_CURRENT_SLIDE', 'SELECT_LAYER', 'SET_PLAYING', 'SET_CURRENT_TIME'].includes(action.type)) {
+      setUiState(action);
+      return;
+    }
+
+    // Handle undo/redo
+    if (action.type === 'UNDO') {
+      undo();
+      return;
+    }
+    if (action.type === 'REDO') {
+      redo();
+      return;
+    }
+
+    // Handle project-changing actions
+    const newProject = sliderReducer({ project, ...uiState }, action).project;
+    if (newProject) {
+      addToHistory(newProject);
+    }
+  }, [project, uiState, undo, redo, addToHistory]);
+
+  const saveProject = useCallback(() => {
+    try {
+      const projectData = JSON.stringify(project, null, 2);
+      const blob = new Blob([projectData], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${project.name || 'slider-project'}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to save project:', error);
+      alert('Failed to save project. Please try again.');
+    }
+  }, [project]);
+
+  const loadProject = useCallback((projectData: string) => {
+    try {
+      const parsedProject = JSON.parse(projectData);
+      // Validate the project structure
+      if (parsedProject && parsedProject.id && parsedProject.slides) {
+        addToHistory(parsedProject);
+        setUiState({ type: 'SET_CURRENT_SLIDE', payload: 0 });
+        setUiState({ type: 'SELECT_LAYER', payload: null });
+      } else {
+        throw new Error('Invalid project format');
+      }
+    } catch (error) {
+      console.error('Failed to load project:', error);
+      alert('Failed to load project. Please check the file format.');
+    }
+  }, [addToHistory]);
+
+  const state: SliderState = {
+    project,
+    ...uiState
+  };
   
   return (
-    <SliderContext.Provider value={{ state, dispatch }}>
+    <SliderContext.Provider value={{ state, dispatch, canUndo, canRedo, undo, redo, saveProject, loadProject }}>
       {children}
     </SliderContext.Provider>
   );

@@ -3,7 +3,7 @@ import { useSlider } from '../context/SliderContext';
 
 export function useKeyboardShortcuts() {
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const { state, dispatch } = useSlider();
+  const { state, dispatch, saveProject } = useSlider();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -27,10 +27,12 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Space - Play/Pause
+      // Space - Play/Pause (will be handled by individual preview buttons)
       if (e.key === ' ') {
         e.preventDefault();
-        dispatch({ type: 'SET_PLAYING', payload: !state.isPlaying });
+        // Trigger custom event for animation preview
+        const event = new CustomEvent('triggerAnimationPreview');
+        document.dispatchEvent(event);
         return;
       }
 
@@ -55,18 +57,23 @@ export function useKeyboardShortcuts() {
         switch (e.key.toLowerCase()) {
           case 'z':
             e.preventDefault();
-            // TODO: Implement undo
-            console.log('Undo - not implemented yet');
+            if (e.shiftKey) {
+              // Ctrl+Shift+Z = Redo
+              dispatch({ type: 'REDO' });
+            } else {
+              // Ctrl+Z = Undo
+              dispatch({ type: 'UNDO' });
+            }
             break;
           case 'y':
             e.preventDefault();
-            // TODO: Implement redo
-            console.log('Redo - not implemented yet');
+            // Ctrl+Y = Redo (alternative)
+            dispatch({ type: 'REDO' });
             break;
           case 's':
             e.preventDefault();
-            // TODO: Implement save
-            console.log('Save - not implemented yet');
+            // Save project
+            saveProject();
             break;
           case 'e':
             e.preventDefault();
@@ -79,7 +86,7 @@ export function useKeyboardShortcuts() {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [state, dispatch]);
+  }, [state, dispatch, saveProject]);
 
   return { showShortcuts, setShowShortcuts };
 }
