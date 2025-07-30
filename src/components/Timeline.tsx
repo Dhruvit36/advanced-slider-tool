@@ -3,6 +3,7 @@ import { useSlider } from '../context/SliderContext';
 import { TimelineControls } from './timeline/TimelineControls';
 import { LayersPanel } from './timeline/LayersPanel';
 import { TimelineMarkers } from './timeline/TimelineMarkers';
+import { TimelinePlayhead } from './timeline/TimelinePlayhead';
 import { AnimationBlock } from './timeline/AnimationBlock';
 import { Layer, Slide } from '../types';
 
@@ -251,6 +252,14 @@ export function Timeline() {
             <div className="absolute top-0 left-0 right-0 h-6 bg-gray-200 border-b border-gray-300">
               <TimelineMarkers />
             </div>
+            
+            {/* Timeline Playhead */}
+            <TimelinePlayhead 
+              currentTime={currentTime}
+              maxTime={maxTime}
+              isPlaying={isPlaying}
+              timelineHeight={timelineHeight}
+            />
             
             {/* Spacer for timeline markers */}
             <div className="h-6"></div>

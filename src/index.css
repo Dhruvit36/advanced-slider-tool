@@ -986,3 +986,62 @@ input[type="color"]::-moz-color-swatch {
   opacity: 1;
   background: rgba(59, 130, 246, 0.2);
 }
+
+/* Progress Tracker Animations */
+@keyframes progress-shine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes progress-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+@keyframes progress-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(147, 51, 234, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(147, 51, 234, 0.6), 0 0 30px rgba(147, 51, 234, 0.4);
+  }
+}
+
+@keyframes indicator-bounce {
+  0%, 100% {
+    transform: translateY(-50%) scale(1);
+  }
+  50% {
+    transform: translateY(-50%) scale(1.2);
+  }
+}
+
+/* Progress Bar Enhancement */
+.progress-bar-shine {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: progress-shine 2s infinite;
+}
+
+.progress-indicator-active {
+  animation: progress-pulse 2s infinite, progress-glow 2s infinite;
+}
+
+.progress-dot-bounce {
+  animation: indicator-bounce 1s infinite;
+}
