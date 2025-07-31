@@ -6,3 +6,5 @@ export { CompactSelect } from './CompactSelect';
 export { EnhancedDropdown } from './EnhancedDropdown';
 export { CleanDropdown } from './CleanDropdown';
 export { ColorPicker } from './ColorPicker';
+export { AnimationButtonSelector } from './AnimationButtonSelector';
+export { EasingButtonSelector } from './EasingButtonSelector';
