@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlider } from '../context/SliderContext';
 import { TimelineControls } from './timeline/TimelineControls';
 import { LayersPanel } from './timeline/LayersPanel';
@@ -27,12 +27,15 @@ export function Timeline() {
     return currentSlide?.duration || 15000;
   }, [currentSlide?.duration]);
 
-  // Animation loop
+  // Optimized animation loop with throttling
   useEffect(() => {
     if (isPlaying) {
       const startTime = Date.now() - currentTime;
+      let lastUpdateTime = 0;
+      const targetFPS = 60;
+      const frameInterval = 1000 / targetFPS;
       
-      const animate = () => {
+      const animate = (timestamp: number) => {
         const elapsed = Date.now() - startTime;
         
         if (elapsed >= maxTime) {
@@ -41,7 +44,12 @@ export function Timeline() {
           return;
         }
         
-        dispatch({ type: 'SET_CURRENT_TIME', payload: elapsed });
+        // Throttle updates to target FPS for better performance
+        if (timestamp - lastUpdateTime >= frameInterval) {
+          dispatch({ type: 'SET_CURRENT_TIME', payload: elapsed });
+          lastUpdateTime = timestamp;
+        }
+        
         animationRef.current = requestAnimationFrame(animate);
       };
       
@@ -113,19 +121,19 @@ export function Timeline() {
     return { left: `${startPercent}%`, width: `${widthPercent}%` };
   };
 
-  // Tooltip handlers
-  const handleMouseEnter = (e: React.MouseEvent, layerId: string) => {
+  // Optimized tooltip handlers with useCallback
+  const handleMouseEnter = useCallback((e: React.MouseEvent, layerId: string) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setTooltipPosition({
       x: rect.left + rect.width / 2,
       y: rect.top - 10
     });
     setHoveredLayer(layerId);
-  };
+  }, []);
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = useCallback(() => {
     setHoveredLayer(null);
-  };
+  }, []);
 
   // Update layer animation properties
   const updateLayerAnimation = (layerId: string, updates: { delay?: number; duration?: number }) => {
@@ -179,17 +187,14 @@ export function Timeline() {
     }
   }, [isResizing, timelineHeight]);
 
-  // Memoized grid lines
-  const timelineGridLines = useMemo(() => {
-    const stableMaxTime = 15000;
-    return Array.from({ length: Math.ceil(stableMaxTime / 1000) }, (_, i) => (
-      <div
-        key={`grid-${i}`}
-        className="absolute top-0 bottom-0 w-px bg-gray-400"
-        style={{ left: `${(i / Math.ceil(stableMaxTime / 1000)) * 100}%` }}
-      />
-    ));
-  }, []);
+  // Memoized layer positions for better performance
+  const layerPositions = useMemo(() => {
+    if (!currentSlide?.layers) return [];
+    return currentSlide.layers.map(layer => ({
+      id: layer.id,
+      position: getLayerPosition(layer)
+    }));
+  }, [currentSlide?.layers, maxTime]);
 
   return (
     <div 
@@ -231,21 +236,30 @@ export function Timeline() {
           timelineHeight={timelineHeight} 
         />
 
-        {/* Right Panel - Timeline Tracks */}
+        {/* Right Panel - Timeline Tracks with optimized background */}
         <div className="flex-1 relative overflow-hidden" data-timeline-container>
           <div
             ref={timelineRef}
             className="h-full bg-gray-100 relative cursor-pointer border-b border-gray-200 select-none overflow-hidden"
             onClick={handleTimelineClick}
             style={{
-              backgroundImage: `repeating-linear-gradient(
-                90deg,
-                transparent,
-                transparent 49px,
-                #e5e7eb 49px,
-                #e5e7eb 50px
-              )`,
-              backgroundSize: '50px 100%'
+              backgroundImage: `
+                repeating-linear-gradient(
+                  90deg,
+                  transparent,
+                  transparent 49px,
+                  #e5e7eb 49px,
+                  #e5e7eb 50px
+                ),
+                repeating-linear-gradient(
+                  90deg,
+                  rgba(156, 163, 175, 0.1),
+                  rgba(156, 163, 175, 0.1) calc(100% / 15),
+                  rgba(156, 163, 175, 0.2) calc(100% / 15),
+                  rgba(156, 163, 175, 0.2) calc(100% / 15 + 1px)
+                )
+              `,
+              backgroundSize: '50px 100%, 100% 100%'
             }}
           >
             {/* Timeline Markers Background */}
@@ -266,30 +280,30 @@ export function Timeline() {
 
             {/* Animation Tracks */}
             <div className="space-y-0 overflow-visible" style={{ maxHeight: `${timelineHeight - 80}px`, overflowY: 'auto' }}>
-              {currentSlide?.layers.map((layer) => (
-                <div 
-                  key={layer.id} 
-                  className="h-10 bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150 relative overflow-visible"
-                  onClick={(e) => e.stopPropagation()}
-                  data-animation-track
-                >
-                  <AnimationBlock
-                    layer={layer}
-                    position={getLayerPosition(layer)}
-                    maxTime={maxTime}
-                    isSelected={state.selectedLayerId === layer.id}
-                    onMouseEnter={handleMouseEnter}
-                    onMouseLeave={handleMouseLeave}
-                    onUpdateAnimation={updateLayerAnimation}
-                    onSelectLayer={handleSelectLayer}
-                  />
-                  
-                  {/* Timeline grid lines for reference */}
-                  <div className="absolute inset-0 pointer-events-none opacity-10">
-                    {timelineGridLines}
+              {currentSlide?.layers.map((layer, index) => {
+                const layerPosition = layerPositions.find(p => p.id === layer.id)?.position;
+                return (
+                  <div 
+                    key={layer.id} 
+                    className="h-10 bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors duration-150 relative overflow-visible"
+                    onClick={(e) => e.stopPropagation()}
+                    data-animation-track
+                  >
+                    {layerPosition && (
+                      <AnimationBlock
+                        layer={layer}
+                        position={layerPosition}
+                        maxTime={maxTime}
+                        isSelected={state.selectedLayerId === layer.id}
+                        onMouseEnter={handleMouseEnter}
+                        onMouseLeave={handleMouseLeave}
+                        onUpdateAnimation={updateLayerAnimation}
+                        onSelectLayer={handleSelectLayer}
+                      />
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
               
               {/* Empty state for timeline tracks */}
               {(!currentSlide?.layers || currentSlide.layers.length === 0) && (
@@ -305,47 +319,58 @@ export function Timeline() {
         </div>
       </div>
 
-      {/* Tooltip */}
+      {/* Optimized Tooltip with reduced re-renders */}
       {hoveredLayer && currentSlide && (
         <div 
-          className="fixed pointer-events-none z-[9999]"
+          className="fixed pointer-events-none z-[9999] will-change-transform"
           style={{ 
             left: tooltipPosition.x,
             top: tooltipPosition.y,
-            transform: 'translate(-50%, -100%)'
+            transform: 'translate(-50%, -100%) translateZ(0)'
           }}
         >
           <div className="bg-slate-800 backdrop-blur-sm text-white px-4 py-3 rounded-xl shadow-2xl border border-slate-600 min-w-max">
             <div className="text-sm font-semibold text-white mb-2 flex items-center">
               <i className="fas fa-magic mr-2 text-blue-300"></i>
-              {currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.entrance}
+              {(() => {
+                const layer = currentSlide.layers.find(l => l.id === hoveredLayer);
+                return layer?.animation.entrance;
+              })()}
             </div>
             <div className="text-xs text-slate-300 space-y-1">
-              <div className="flex justify-between items-center space-x-6">
-                <span className="text-slate-400">Layer</span>
-                <span className="font-medium text-white">
-                  {currentSlide.layers.find(l => l.id === hoveredLayer)?.content.slice(0, 18)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center space-x-6">
-                <span className="text-slate-400">Start</span>
-                <span className="font-mono text-blue-300">
-                  {((currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.delay || 0) / 1000).toFixed(1)}s
-                </span>
-              </div>
-              <div className="flex justify-between items-center space-x-6">
-                <span className="text-slate-400">Duration</span>
-                <span className="font-mono text-green-300">
-                  {((currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.duration || 0) / 1000).toFixed(1)}s
-                </span>
-              </div>
-              <div className="flex justify-between items-center space-x-6">
-                <span className="text-slate-400">End</span>
-                <span className="font-mono text-purple-300">
-                  {(((currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.delay || 0) + 
-                     (currentSlide.layers.find(l => l.id === hoveredLayer)?.animation.duration || 0)) / 1000).toFixed(1)}s
-                </span>
-              </div>
+              {(() => {
+                const layer = currentSlide.layers.find(l => l.id === hoveredLayer);
+                if (!layer) return null;
+                
+                return (
+                  <>
+                    <div className="flex justify-between items-center space-x-6">
+                      <span className="text-slate-400">Layer</span>
+                      <span className="font-medium text-white">
+                        {layer.content.slice(0, 18)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center space-x-6">
+                      <span className="text-slate-400">Start</span>
+                      <span className="font-mono text-blue-300">
+                        {(layer.animation.delay / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center space-x-6">
+                      <span className="text-slate-400">Duration</span>
+                      <span className="font-mono text-green-300">
+                        {(layer.animation.duration / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center space-x-6">
+                      <span className="text-slate-400">End</span>
+                      <span className="font-mono text-purple-300">
+                        {((layer.animation.delay + layer.animation.duration) / 1000).toFixed(1)}s
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
             <div className="absolute top-full left-1/2 transform -translate-x-1/2">
               <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-transparent border-t-slate-800"></div>
