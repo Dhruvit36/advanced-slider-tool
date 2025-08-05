@@ -182,11 +182,22 @@ function sliderReducer(state: SliderState, action: SliderAction): SliderState {
             slide.id === action.payload.slideId
               ? {
                   ...slide,
-                  layers: slide.layers.map(layer =>
-                    layer.id === action.payload.layerId
-                      ? { ...layer, ...action.payload.updates }
-                      : layer
-                  )
+                  layers: slide.layers.map(layer => {
+                    if (layer.id !== action.payload.layerId) return layer;
+                    const { style, animation, ...rest } = action.payload.updates;
+                    return {
+                      ...layer,
+                      ...rest,
+                      style: {
+                        ...layer.style,
+                        ...(style || {})
+                      },
+                      animation: {
+                        ...layer.animation,
+                        ...(animation || {})
+                      }
+                    };
+                  })
                 }
               : slide
           )
