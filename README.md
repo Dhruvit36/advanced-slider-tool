@@ -158,7 +158,6 @@ advanced-slider-tool/
 │   │   ├── ExportModal.tsx     # Export functionality modal
 │   │   ├── MediaLibrary.tsx    # Media asset management
 │   │   ├── KeyboardShortcuts.tsx # Keyboard shortcuts help panel
-│   │   ├── PerformanceMonitor.tsx # Performance monitoring display
 │   │   ├── VirtualScroll.tsx   # Virtual scrolling optimization
 │   │   ├── SlideThumbnails.tsx # Slide thumbnail navigation
 │   │   ├── canvas/             # Canvas-specific components
@@ -203,7 +202,7 @@ advanced-slider-tool/
 │   │   ├── useCanvasSettings.ts         # Canvas configuration
 │   │   ├── useCanvasZoom.ts             # Canvas zoom functionality
 │   │   ├── useKeyboardShortcuts.ts      # Global keyboard shortcuts
-│   │   ├── usePerformanceMonitor.ts     # Performance monitoring hook
+│   │   ├── usePerformanceMonitor.tsx    # Performance monitoring hook
 │   │   └── useUndoRedo.ts               # Undo/redo functionality
 │   ├── types/                  # TypeScript definitions
 │   │   └── index.ts            # Main type definitions and interfaces
