@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer, useCallback } from 'react
 import { SliderProject, Slide, Layer } from '../types';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 
-interface SliderState {
+export interface SliderState {
   project: SliderProject | null;
   currentSlideIndex: number;
   selectedLayerId: string | null;
@@ -10,7 +10,7 @@ interface SliderState {
   currentTime: number;
 }
 
-type SliderAction =
+export type SliderAction =
   | { type: 'SET_PROJECT'; payload: SliderProject }
   | { type: 'ADD_SLIDE'; payload: Slide }
   | { type: 'DELETE_SLIDE'; payload: string }
@@ -130,7 +130,7 @@ const initialState: SliderState = {
   currentTime: 0
 };
 
-function sliderReducer(state: SliderState, action: SliderAction): SliderState {
+export function sliderReducer(state: SliderState, action: SliderAction): SliderState {
   switch (action.type) {
     case 'SET_PROJECT':
       return { ...state, project: action.payload };
