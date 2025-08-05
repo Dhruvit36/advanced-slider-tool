@@ -29,12 +29,10 @@ export function useCanvasKeyboardShortcuts({
             break;
           case ';':
             e.preventDefault();
-            onToggleGuides();
-            break;
-          case 'Shift':
             if (e.shiftKey) {
-              e.preventDefault();
               onToggleSnapToGrid();
+            } else {
+              onToggleGuides();
             }
             break;
         }
